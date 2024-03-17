@@ -68,6 +68,7 @@ public:
                 remove(tableName);
 
             } else if (commandType == "#") {
+                cout << "% ";
                 string junk;
                 getline(cin, junk);
 
@@ -93,19 +94,21 @@ public:
                     } else { // all
                         printFromAll(tableName, tokens);
                     }
-
-                    // Print the selected columns from the specified table
-                } else if (keyword == "INSERT") {
-                     cout << "% ";
-                    // Call insertInto method with appropriate arguments
-                    string tableName;
-                    int numRows;
-                    cin >> tableName >> numRows;
-                    insertInto(tableName, numRows);
-
                 } else {
                     // Invalid command syntax
                     cout << "Invalid PRINT command syntax" << endl;
+                }
+                 // Print the selected columns from the specified table
+            } else if (commandType == "INSERT") {
+                cout << "% ";
+                // Call insertInto method with appropriate arguments
+                string tableName;
+                int numRows;
+                string token;
+                cin >> token;
+                if (token == "INTO") {
+                    cin >> tableName >> numRows >> token;
+                    insertInto(tableName, numRows);
                 }
             } else {
                 // Invalid command
@@ -113,6 +116,7 @@ public:
                 string junk;
                 getline(cin, junk);
             }
+            
             cin >> commandType;
             tokens.clear();
         }
