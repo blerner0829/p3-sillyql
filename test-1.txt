@@ -1,0 +1,3 @@
+# Test file 1: # (comment), CREATE, INSERT, PRINT ... ALL, REMOVE, QUIT\
+CREATE cities 5 string string int double bool name state population area is_capital?
+PRINT FROM cities 2 name state ALL
