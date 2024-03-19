@@ -1,3 +1,9 @@
-# Test file 1: # (comment), CREATE, INSERT, PRINT ... ALL, REMOVE, QUIT\
+# Test file 1: # (comment), CREATE, INSERT, PRINT ... WHERE, QUIT\
 CREATE cities 5 string string int double bool name state population area is_capital?
-PRINT FROM cities 2 name state ALL
+INSERT INTO cities 4 ROWS
+Ann_Arbor Michigan 120782 28.69 false
+Lansing Michigan 116020 36.68 true
+Miami Florida 453579 55.25 false
+San_Francisco California 864816 46.87 false
+PRINT FROM cities Ann_Arbor Lansing Miami Florida San_Francisco WHERE is_capital? = false
+QUIT

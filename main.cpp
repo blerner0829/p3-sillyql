@@ -11,6 +11,23 @@
 
 using namespace std;
 
+class Comparator {
+public:
+    bool operator()(const string& lhs, const string& op, const string& rhs) const {
+        if (op == "=") {
+            return lhs == rhs;
+        } else if (op == "<") {
+            return lhs < rhs;
+        } else if (op == ">") {
+            return lhs > rhs;
+        } else {
+            // Invalid operaxtor
+            cerr << "Invalid comparison operator: " << op << endl;
+            return false;
+        }
+    }
+};
+
 struct Options {
     bool isQuiet = false;
 };
@@ -39,14 +56,9 @@ public:
         cin >> commandType;
         while (commandType != "QUIT") {
             vector<string> tokens;
-
-            if (commandType == "QUIT") {
-                cout << "% ";
-                // Call quit method
-                cout << "QUIT COMMAND CALLED" << endl;
-                quit();
-
-            } else if (commandType == "CREATE") {
+            switch (commandType[0])
+            {
+            case 'C': {
                 cout << "% ";
                 // Call create method with appropriate arguments
                 string token;
@@ -59,70 +71,107 @@ public:
                     tokens.push_back(token);
                 }
                 create(tableName, numCols, tokens);
-
-            } else if (commandType == "REMOVE") {
+                break;
+            } 
+            case 'R': {
                 cout << "% ";
-    
                 string tableName;
                 cin >> tableName;
                 remove(tableName);
-
-            } else if (commandType == "#") {
+                break;
+            }
+            case '#': {
                 cout << "% ";
                 string junk;
                 getline(cin, junk);
-
-            } else if (commandType == "PRINT") {
+                break;
+            }
+            case 'P': {
+                // Print the selected columns from the specified table
                 cout << "% ";
                 string keyword;
                 cin >> keyword; // Read the next keyword after "PRINT"
-                if (keyword == "FROM") {
-                    // Parse the PRINT FROM command
-                    string tableName;
-                    int numCols;
-                    string condition;
+                if (keyword != "FROM") break;
+                // Parse the PRINT FROM command
+                string tableName;
+                int numCols;
 
-                    cin >> tableName >> numCols; // Read table name and number of columns to print
-                    for (int i = 0; i < numCols; ++i) {
-                        string columnName;
-                        cin >> columnName; // Read each column name to print
-                        tokens.push_back(columnName);
-                    }
-                    cin >> condition;
-                    if (condition == "WHERE") {
-                        printFromWhere(tableName, tokens);
-                    } else { // all
-                        printFromAll(tableName, tokens);
-                    }
-                } else {
-                    // Invalid command syntax
-                    cout << "Invalid PRINT command syntax" << endl;
+                cin >> tableName >> numCols; // Read table name and number of columns to print
+                for (int i = 0; i < numCols; ++i) {
+                    string columnName;
+                    cin >> columnName; // Read each column name to print
+                    tokens.push_back(columnName);
                 }
-                 // Print the selected columns from the specified table
-            } else if (commandType == "INSERT") {
+                cin >> keyword;
+                if (keyword == "WHERE") {
+                    printFromWhere(tableName, tokens);
+                } else { // all
+                    printFromAll(tableName, tokens);
+                }
+                // error handling
+                // } else {
+                //     // Invalid command syntax
+                //     cout << "Invalid PRINT command syntax" << endl;
+                // }
+                break;
+            }
+            case 'I': {
                 cout << "% ";
                 // Call insertInto method with appropriate arguments
                 string tableName;
                 int numRows;
                 string token;
                 cin >> token;
-                if (token == "INTO") {
-                    cin >> tableName >> numRows >> token;
-                    insertInto(tableName, numRows);
+                if (token != "INTO") break; // TODO: if this happens, getline(cin, junk) will not be called
+                cin >> tableName >> numRows >> token;
+                if (token != "ROWS") break;
+                insertInto(tableName, numRows);
+                break;
+                
+            }
+            case 'D': {
+                cout << "% ";
+                // Call deleteFrom method with appropriate arguments
+                string tableName, colName, op, value, keyword;
+                cin >> keyword >> tableName;
+                if (keyword != "FROM") break;
+                cin >> keyword >> colName >> op >> value;
+                if (keyword != "WHERE") break;
+                deleteFrom(tableName, colName, op, value);
+                break;
+            }
+            case 'J': {
+                cout << "% ";
+                string tableName1, tableName2, colName1, colName2, junk;
+                int numCols;
+                cin >> tableName1 >> junk >> tableName2 >> junk >> colName1 >> junk >> colName2 >> junk >> junk >> numCols;
+                vector<string> printColumns;
+                for (int i = 0; i < numCols; ++i) {
+                    string printColName;
+                    int tableIndex;
+                    cin >> tableIndex >> printColName;
+                    printColumns.push_back(printColName);
+                    cout << "printColName: " << printColName << endl;
                 }
-            } else {
-                // Invalid command
-                // cerr << "Invalid command: " << tokens[0] << tokens[1] << endl;
+                joinTables(tableName1, tableName2, colName1, colName2, printColumns);
+                break;
+            }
+            default: {
                 string junk;
                 getline(cin, junk);
+                break;
             }
-            
+            }
             cin >> commandType;
             tokens.clear();
         }
-
+        if (commandType == "QUIT") {
+                cout << "% ";
+                // Call quit method
+                quit();
+        }
     }
-    // Add methods to interact with the database, such as creating tables, inserting rows, executing queries, etc.
+   
     void create(const string& tableName, int numColumns, const vector<string>& command) {
 
         // Create a new table and add it to the database
@@ -156,7 +205,6 @@ public:
             cout << "Table " << tableName << " not found in the database" << endl;
             return;
         }
-
         // Insert new rows into the table
         Table& table = tableIt->second;
         size_t startIndex = table.data.size(); // Index of the first row added
@@ -173,7 +221,41 @@ public:
         cout << "Added " << numRows << " rows to " << tableName << " from position " << startIndex << " to " << endIndex << endl;
     }
 
+    // Method to delete rows from the specified table based on conditions
+    void deleteFrom(const string& tableName, const string& columnName, const string& op, const string& value) {
+        // Find the table
+        auto tableIt = tables.find(tableName);
+        if (tableIt == tables.end()) {
+            // Table not found
+            cout << "Table " << tableName << " not found in the database" << endl;
+            return;
+        }
 
+        // Find the column index
+        Table& table = tableIt->second;
+        auto colIndex = find(table.columnNames.begin(), table.columnNames.end(), columnName);
+        if (colIndex == table.columnNames.end()) {
+            // Column not found
+            cout << "Column " << columnName << " not found in table " << tableName << endl;
+            return;
+        }
+        size_t columnIndex = static_cast<size_t>(distance(table.columnNames.begin(), colIndex));
+
+        // Delete rows based on conditions
+        Comparator comparator;
+        int deletedRows = 0;
+        for (auto it = table.data.begin(); it != table.data.end();) {
+        if (comparator((*it)[columnIndex], op, value)) { // Using overloaded operator
+            it = table.data.erase(it);
+            ++deletedRows;
+        } else {
+            ++it;
+        }
+    }
+
+        // Print summary
+        cout << "Deleted " << deletedRows << " rows from " << tableName << endl;
+    }
     // Method to quit the program and clean up all data
     void quit() {
         // Clean up all internal data
@@ -212,6 +294,7 @@ public:
         string opp;
         string rhs;
         cin >> lhs >> opp >> rhs;
+        cout << "LHS: " << lhs << endl; // for testing
         // Find the table
         auto tableIt = tables.find(tableName);
         // error checking
@@ -240,19 +323,29 @@ public:
         }
         cout << endl;
 
+        // Find the index of the column to be compared
+        auto colIndex = find(table.columnNames.begin(), table.columnNames.end(), lhs);
+        if (colIndex == table.columnNames.end()) {
+            // Column not found
+            cout << "Column " << lhs << " not found in table " << tableName << endl;
+            return;
+        }
         // Print the values from the selected columns for each row
+        Comparator comparator; // Instantiate the comparator
         for (const auto& row : table.data) {
-            for (const auto& columnName : printColumns) {
-                // Find the index of the column
-                auto colIndex = find(table.columnNames.begin(), table.columnNames.end(), columnName);
-                // Print the value from the corresponding column
-                cout << row[static_cast<size_t>(distance(table.columnNames.begin(), colIndex))] << " ";
+            if (comparator(row[static_cast<size_t>(distance(table.columnNames.begin(), colIndex))], opp, rhs)) {
+                // Print the values from the selected columns for this row
+                for (const auto& columnName : printColumns) {
+                    auto colIndex = find(table.columnNames.begin(), table.columnNames.end(), columnName);
+                    cout << row[static_cast<size_t>(distance(table.columnNames.begin(), colIndex))] << " ";
+                }
+                cout << endl;
             }
-            cout << endl;
         }
 
         // Print summary
-        cout << "Printed " << table.data.size() << " matching rows from " << tableName << endl;
+        cout << "Printed " << "M" << " matching rows from " << tableName << endl;
+
     }
 
 
@@ -281,6 +374,61 @@ public:
         // Print summary
         cout << "Printed " << table.data.size() << " matching rows from " << tableName << endl;
     }
+
+    void joinTables(const string& tableName1, const string& tableName2, const string& colName1, const string& colName2, const vector<string>& printColumns) {
+        // Find the tables
+        auto tableIt1 = tables.find(tableName1);
+        auto tableIt2 = tables.find(tableName2);
+        
+        // Check if both tables exist
+        if (tableIt1 == tables.end() || tableIt2 == tables.end()) {
+            cout << "One of the tables specified does not exist" << endl;
+            exit(0); // TODO: remove this
+            return;
+        }
+
+        // Find the columns
+        const Table& table1 = tableIt1->second;
+        const Table& table2 = tableIt2->second;
+        auto colIndex1 = find(table1.columnNames.begin(), table1.columnNames.end(), colName1);
+        auto colIndex2 = find(table2.columnNames.begin(), table2.columnNames.end(), colName2);
+        
+        // Check if both columns exist
+        if (colIndex1 == table1.columnNames.end() || colIndex2 == table2.columnNames.end()) {
+            cout << "One of the specified columns does not exist in its respective table" << endl;
+            return;
+        }
+
+        // Get the indices of the columns
+        size_t columnIndex1 = static_cast<size_t>(distance(table1.columnNames.begin(), colIndex1));
+        size_t columnIndex2 = static_cast<size_t>(distance(table2.columnNames.begin(), colIndex2));
+
+        // Iterate through the first table
+        for (const auto& row1 : table1.data) {
+            // Find rows in the second table that match the condition
+            for (const auto& row2 : table2.data) {
+                if (row1[columnIndex1] == row2[columnIndex2]) {
+                    // Print the selected columns
+                    for (const auto& columnName : printColumns) {
+                        auto colIndex = find(table1.columnNames.begin(), table1.columnNames.end(), columnName);
+                        if (colIndex == table1.columnNames.end()) {
+                            colIndex = find(table2.columnNames.begin(), table2.columnNames.end(), columnName);
+                            if (colIndex != table2.columnNames.end()) {
+                                cout << row2[static_cast<size_t>(distance(table2.columnNames.begin(), colIndex))] << " ";
+                            }
+                        } else {
+                            cout << row1[static_cast<size_t>(distance(table1.columnNames.begin(), colIndex))] << " ";
+                        }
+                    }
+                    cout << endl;
+                }
+            }
+        }
+
+        // Print summary
+        cout << "Printed " << "N" << " rows from joining " << tableName1 << " to " << tableName2 << endl;
+    }
+
 };
 
 void printHelp(char *argv[])
