@@ -5,5 +5,5 @@ Ann_Arbor Michigan 120782 28.69 false
 Lansing Michigan 116020 36.68 true
 Miami Florida 453579 55.25 false
 San_Francisco California 864816 46.87 false
-PRINT FROM cities Ann_Arbor Lansing Miami Florida San_Francisco WHERE is_capital? = false
+PRINT FROM cities 3 name state population WHERE is_capital? = false
 QUIT

@@ -144,14 +144,14 @@ public:
                 cout << "% ";
                 string tableName1, tableName2, colName1, colName2, junk;
                 int numCols;
+                // JOINT    table1   AND      table2       WHERE     col1       =       col2       AND      PRINT   numCols
                 cin >> tableName1 >> junk >> tableName2 >> junk >> colName1 >> junk >> colName2 >> junk >> junk >> numCols;
-                vector<string> printColumns;
+                vector<pair<size_t, string>> printColumns;
                 for (int i = 0; i < numCols; ++i) {
                     string printColName;
                     int tableIndex;
-                    cin >> tableIndex >> printColName;
-                    printColumns.push_back(printColName);
-                    cout << "printColName: " << printColName << endl;
+                    cin >> printColName >> tableIndex;
+                    printColumns.emplace_back(tableIndex, printColName);
                 }
                 joinTables(tableName1, tableName2, colName1, colName2, printColumns);
                 break;
@@ -293,8 +293,8 @@ public:
         string lhs;
         string opp;
         string rhs;
+        int numMatches = 0;
         cin >> lhs >> opp >> rhs;
-        cout << "LHS: " << lhs << endl; // for testing
         // Find the table
         auto tableIt = tables.find(tableName);
         // error checking
@@ -338,13 +338,14 @@ public:
                 for (const auto& columnName : printColumns) {
                     auto colIndex = find(table.columnNames.begin(), table.columnNames.end(), columnName);
                     cout << row[static_cast<size_t>(distance(table.columnNames.begin(), colIndex))] << " ";
+                    numMatches++;
                 }
                 cout << endl;
             }
         }
 
         // Print summary
-        cout << "Printed " << "M" << " matching rows from " << tableName << endl;
+        cout << "Printed " << numMatches << " matching rows from " << tableName << endl;
 
     }
 
@@ -375,7 +376,9 @@ public:
         cout << "Printed " << table.data.size() << " matching rows from " << tableName << endl;
     }
 
-    void joinTables(const string& tableName1, const string& tableName2, const string& colName1, const string& colName2, const vector<string>& printColumns) {
+    void joinTables(const string& tableName1, const string& tableName2, const string& colName1, const string& colName2, const vector<pair<size_t, string>>& printColumns) {
+        int numPrinted = 0;
+        
         // Find the tables
         auto tableIt1 = tables.find(tableName1);
         auto tableIt2 = tables.find(tableName2);
@@ -383,7 +386,6 @@ public:
         // Check if both tables exist
         if (tableIt1 == tables.end() || tableIt2 == tables.end()) {
             cout << "One of the tables specified does not exist" << endl;
-            exit(0); // TODO: remove this
             return;
         }
 
@@ -403,21 +405,39 @@ public:
         size_t columnIndex1 = static_cast<size_t>(distance(table1.columnNames.begin(), colIndex1));
         size_t columnIndex2 = static_cast<size_t>(distance(table2.columnNames.begin(), colIndex2));
 
+
+        // iterate through the columns that will be printed
+        for (const auto& cols : printColumns) {
+            cout << cols.second << " ";
+        }
+        cout << endl;
         // Iterate through the first table
         for (const auto& row1 : table1.data) {
             // Find rows in the second table that match the condition
             for (const auto& row2 : table2.data) {
                 if (row1[columnIndex1] == row2[columnIndex2]) {
+                    numPrinted++;
                     // Print the selected columns
-                    for (const auto& columnName : printColumns) {
-                        auto colIndex = find(table1.columnNames.begin(), table1.columnNames.end(), columnName);
-                        if (colIndex == table1.columnNames.end()) {
-                            colIndex = find(table2.columnNames.begin(), table2.columnNames.end(), columnName);
-                            if (colIndex != table2.columnNames.end()) {
-                                cout << row2[static_cast<size_t>(distance(table2.columnNames.begin(), colIndex))] << " ";
+                    for (const auto& printCol : printColumns) {
+                        // size_t tableIndex = printCol.first;
+                        // const string& columnName = printCol.second;
+                        const Table* printTable = nullptr;
+                        size_t printColumnIndex = 0;
+
+                        if (printCol.first == 1) {
+                            printTable = &table1;
+                            auto colIndex = find(printTable->columnNames.begin(), printTable->columnNames.end(), printCol.second);
+                            if (colIndex != printTable->columnNames.end()) {
+                                printColumnIndex = static_cast<size_t>(distance(printTable->columnNames.begin(), colIndex));
+                                cout << row1[printColumnIndex] << " ";
                             }
-                        } else {
-                            cout << row1[static_cast<size_t>(distance(table1.columnNames.begin(), colIndex))] << " ";
+                        } else if (printCol.first == 2) {
+                            printTable = &table2;
+                            auto colIndex = find(printTable->columnNames.begin(), printTable->columnNames.end(), printCol.second);
+                            if (colIndex != printTable->columnNames.end()) {
+                                printColumnIndex = static_cast<size_t>(distance(printTable->columnNames.begin(), colIndex));
+                                cout << row2[printColumnIndex] << " ";
+                            }
                         }
                     }
                     cout << endl;
@@ -426,7 +446,7 @@ public:
         }
 
         // Print summary
-        cout << "Printed " << "N" << " rows from joining " << tableName1 << " to " << tableName2 << endl;
+        cout << "Printed " << numPrinted << " rows from joining " << tableName1 << " to " << tableName2 << endl;
     }
 
 };

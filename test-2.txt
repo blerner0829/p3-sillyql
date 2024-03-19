@@ -1,4 +1,5 @@
 # Test file 2: # (comment), CREATE, INSERT, JOIN, QUIT\
+
 CREATE pets 3 string bool bool Name likes_cats? likes_dogs?
 INSERT INTO pets 2 ROWS
 person true true
@@ -6,10 +7,16 @@ Paoletti true false
 
 CREATE 281class 3 string string bool person emotion likes_dogs?
 INSERT INTO 281class 2 ROWS
-person happy true
+person happy false
 Paoletti stressed false
 
+# PRINT FROM pets 3 Name likes_cats? likes_dogs? ALL
+
+# PRINT FROM 281class 3 person emotion likes_dogs? ALL
+
 JOIN pets AND 281class WHERE Name = person AND PRINT 3 Name 1 emotion 2 likes_dogs? 1
-# JOIN <tablename1> AND <tablename2> WHERE <colname1> = <colname2> 
-# AND PRINT <N> <print_colname1> <1|2> <print_colname2> <1|2> ... <print_colnameN> <1|2>
+# JOIN <tablename1> AND <tablename2> WHERE <colname1> = <colname2> AND PRINT <N> <print_colname1> <1|2> <print_colname2> <1|2> ... <print_colnameN> <1|2>
+# JOIN OUTPUT: 
+# 
+
 QUIT
