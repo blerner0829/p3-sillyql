@@ -22,7 +22,7 @@ public:
             return lhs > rhs;
         } else {
             // Invalid operaxtor
-            cerr << "Invalid comparison operator: " << op << endl;
+            cout << "Invalid comparison operator: " << op << endl;
             return false;
         }
     }
@@ -167,7 +167,8 @@ public:
                 break;
             }
             default: {
-                cerr << "Error: unrecognized command\n";
+                cout << "% ";
+                cout << "Error: unrecognized command\n";
                 string junk;
                 getline(cin, junk);
                 break;
@@ -218,7 +219,11 @@ public:
         auto tableIt = tables.find(tableName);
         if (tableIt == tables.end()) {
             // Table not found
-            cout << "Error during INSERT: " << tableName  << "does not name a table in the database\n";
+            cout << "Error during INSERT: " << tableName  << " `does not name a table in the database\n";
+            string junk;
+            for (int i = 0; i < numRows; ++i) {
+                getline(cin, junk);
+            }
             return;
         }
         // Insert new rows into the table
@@ -319,7 +324,7 @@ public:
         // error checking
         if (tableIt == tables.end()) {
             // Table not found
-            cout << "Error during PRINT: " << tableName  << "does not name a table in the database\n";
+            cout << "Error during PRINT: " << tableName  << " does not name a table in the database\n";
             return;
         }
 
@@ -329,7 +334,7 @@ public:
             // error checking
             if (colIt == table.columnNames.end()) {
                 // Column not found in the table
-                cout << "Column " << columnName << " not found in table " << tableName << endl;
+                cout << "Error during PRINT: " << columnName << " does not name a column in " << tableName << endl;
                 return;
             }
         }
@@ -338,7 +343,7 @@ public:
         auto colIt = find(table.columnNames.begin(), table.columnNames.end(), lhs);
         // TODO: Write a test case for this
         if (colIt == table.columnNames.end()) {
-            cout << "Column " << lhs << " not found in table " << tableName << endl;
+            cout << "Error during PRINT: " << lhs << " does not name a column in " << tableName << endl;
             return;
         }
 
@@ -374,15 +379,13 @@ public:
     }
 
     void printFromAll(const string& tableName, const vector<string>& printColumns) {
-
         auto tableIt = tables.find(tableName);
-
         const Table& table = tableIt->second;
 
         // error checking
         if (tableIt == tables.end()) {
             // Table not found
-            cout << "Error during PRINT: " << tableName  << "does not name a table in the database\n";
+            cout << "Error during PRINT: " << tableName  << " does not name a table in the database\n";
             return;
         }
 
@@ -392,7 +395,7 @@ public:
             // error checking
             if (colIt == table.columnNames.end()) {
                 // Column not found in the table
-                cout << "Column " << columnName << " not found in table " << tableName << endl;
+                 cout << "Error during PRINT: " << columnName << " does not name a column in " << tableName << endl;
                 return;
             }
         }
@@ -555,7 +558,7 @@ public:
         }
     }
 
-    Database::Database(Options& opt) :
+    Database(Options& opt) :
     o(opt) {}
 
 };
@@ -603,6 +606,9 @@ void getMode(int argc, char *argv[], Options &opt)
 int main(int argc, char *argv[]) {
     Options opt;
     getMode(argc, argv, opt);
+    
+    ios_base::sync_with_stdio(false);
+
     Database b(opt);
     b.processCommands();
     return 0;

@@ -1,0 +1,12 @@
+# Test file 2: # (comment), CREATE, INSERT, DELETE, QUIT\
+
+CREATE pets 3 string bool bool Name likes_cats? likes_dogs?
+INSERT INTO pets 2 ROWS
+person true true
+Paoletti true false
+
+DELETE FROM pets WHERE likes_dogs? = true
+
+PRINT FROM pets 3 Name likes_cats? likes_dogs? ALL
+
+QUIT
