@@ -1,0 +1,11 @@
+# Test file 2: # (comment), CREATE, INSERT, GENERATE, QUIT\
+
+CREATE 281class 3 string string bool person emotion likes_dogs?
+INSERT INTO 281class 2 ROWS
+person happy false
+Paoletti stressed false
+
+GENERATE FOR 281class hash INDEX ON emotion
+# output for generate: Created hash index for table 281class on column emotion, with 4 distinct keys
+
+QUIT

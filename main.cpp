@@ -49,6 +49,7 @@ class Database {
 private:
     unordered_map<string, Table> tables;
     unordered_map<string, Index> indices; // Optional, if you're implementing indexing
+    Options o;
 public:
 
     void processCommands() {
@@ -156,7 +157,17 @@ public:
                 joinTables(tableName1, tableName2, colName1, colName2, printColumns);
                 break;
             }
+            case 'G': {
+                cout << "% ";
+                // Parse the GENERATE command
+                string keyword, tableName, indexType, colName;
+                cin >> keyword >> tableName >> indexType >> keyword >> keyword >> colName;
+                // cout << "TABLE NAME: " << tableName << endl;
+                generateIndex(tableName, indexType, colName);
+                break;
+            }
             default: {
+                cerr << "Error: unrecognized command\n";
                 string junk;
                 getline(cin, junk);
                 break;
@@ -173,7 +184,12 @@ public:
     }
    
     void create(const string& tableName, int numColumns, const vector<string>& command) {
-
+        // Check if the table already exists in the database
+        if (tables.find(tableName) != tables.end()) {
+            cout << "Error during CREATE: Cannot create already existing table " << tableName << endl;
+            return;
+        }
+        
         // Create a new table and add it to the database
         Table newTable;
         newTable.name = tableName;
@@ -202,7 +218,7 @@ public:
         auto tableIt = tables.find(tableName);
         if (tableIt == tables.end()) {
             // Table not found
-            cout << "Table " << tableName << " not found in the database" << endl;
+            cout << "Error during INSERT: " << tableName  << "does not name a table in the database\n";
             return;
         }
         // Insert new rows into the table
@@ -227,7 +243,7 @@ public:
         auto tableIt = tables.find(tableName);
         if (tableIt == tables.end()) {
             // Table not found
-            cout << "Table " << tableName << " not found in the database" << endl;
+            cout << "Error during DELETE: " << tableName << " does not name a table in the database\n";
             return;
         }
 
@@ -236,7 +252,7 @@ public:
         auto colIndex = find(table.columnNames.begin(), table.columnNames.end(), columnName);
         if (colIndex == table.columnNames.end()) {
             // Column not found
-            cout << "Column " << columnName << " not found in table " << tableName << endl;
+            cout << "Error during DELETE: " <<  columnName << " does not name a column in " << tableName << endl;
             return;
         }
         size_t columnIndex = static_cast<size_t>(distance(table.columnNames.begin(), colIndex));
@@ -273,11 +289,11 @@ public:
         // Check if the table exists
         auto tableIt = tables.find(tableName);
         // error checking
-        // if (tableIt == tables.end()) {
-        //     // Table does not exist
-        //     cout << "Table " << tableName << " not found in the database" << endl;
-        //     return;
-        // }
+        if (tableIt == tables.end()) {
+            // Table does not exist
+            cout << "Error during REMOVE: " << tableName << " does not name a table in the database\n";
+            return;
+        }
 
         // Remove the table and its associated data
         tables.erase(tableIt);
@@ -286,7 +302,7 @@ public:
         indices.erase(tableName);
 
         // Print confirmation message
-        cout << "Table " << tableName << " removed" << std::endl;
+        cout << "Table " << tableName << " removed" << endl;
     }
 
     void printFromWhere(const string& tableName, const vector<string>& printColumns) {
@@ -297,39 +313,45 @@ public:
         cin >> lhs >> opp >> rhs;
         // Find the table
         auto tableIt = tables.find(tableName);
-        // error checking
-        // if (tableIt == tables.end()) {
-        //     // Table not found
-        //     cout << "Table " << tableName << " not found in the database" << endl;
-        //     return;
-        // }
 
-        // Print the selected columns
         const Table& table = tableIt->second;
-        // for (const auto& columnName : printColumns) {
-        //     // Check if the column exists in the table
-        //     auto colIt = find(table.columnNames.begin(), table.columnNames.end(), columnName);
-        //     // error checking
-        //     if (colIt == table.columnNames.end()) {
-        //         // Column not found in the table
-        //         cout << "Column " << columnName << " not found in table " << tableName << endl;
-        //         return;
-        //     }
-        // }
-
-        // Print the column names
-        for (const auto& columnName : printColumns) {
-            cout << columnName << " ";
+        
+        // error checking
+        if (tableIt == tables.end()) {
+            // Table not found
+            cout << "Error during PRINT: " << tableName  << "does not name a table in the database\n";
+            return;
         }
-        cout << endl;
 
-        // Find the index of the column to be compared
-        auto colIndex = find(table.columnNames.begin(), table.columnNames.end(), lhs);
-        if (colIndex == table.columnNames.end()) {
-            // Column not found
+        for (const auto& columnName : printColumns) {
+            // Check if the column exists in the table
+            auto colIt = find(table.columnNames.begin(), table.columnNames.end(), columnName);
+            // error checking
+            if (colIt == table.columnNames.end()) {
+                // Column not found in the table
+                cout << "Column " << columnName << " not found in table " << tableName << endl;
+                return;
+            }
+        }
+
+        // error checking for WHERE statement
+        auto colIt = find(table.columnNames.begin(), table.columnNames.end(), lhs);
+        // TODO: Write a test case for this
+        if (colIt == table.columnNames.end()) {
             cout << "Column " << lhs << " not found in table " << tableName << endl;
             return;
         }
+
+        // Print the column names if !quietMode
+        if (!o.isQuiet) {
+            for (const auto& columnName : printColumns) {
+                cout << columnName << " ";
+            }
+            cout << endl;
+        }
+
+        // Find the index of the column to be compared
+        auto colIndex = find(table.columnNames.begin(), table.columnNames.end(), lhs);
         // Print the values from the selected columns for each row
         Comparator comparator; // Instantiate the comparator
         for (const auto& row : table.data) {
@@ -337,7 +359,9 @@ public:
                 // Print the values from the selected columns for this row
                 for (const auto& columnName : printColumns) {
                     auto colIndex = find(table.columnNames.begin(), table.columnNames.end(), columnName);
-                    cout << row[static_cast<size_t>(distance(table.columnNames.begin(), colIndex))] << " ";
+                    if (!o.isQuiet) {
+                        cout << row[static_cast<size_t>(distance(table.columnNames.begin(), colIndex))] << " ";
+                    }
                     numMatches++;
                 }
                 cout << endl;
@@ -349,17 +373,37 @@ public:
 
     }
 
-
     void printFromAll(const string& tableName, const vector<string>& printColumns) {
+
         auto tableIt = tables.find(tableName);
 
-
         const Table& table = tableIt->second;
-        // Print the column names
-        for (const auto& columnName : printColumns) {
-            cout << columnName << " ";
+
+        // error checking
+        if (tableIt == tables.end()) {
+            // Table not found
+            cout << "Error during PRINT: " << tableName  << "does not name a table in the database\n";
+            return;
         }
-        cout << endl;
+
+        for (const auto& columnName : printColumns) {
+            // Check if the column exists in the table
+            auto colIt = find(table.columnNames.begin(), table.columnNames.end(), columnName);
+            // error checking
+            if (colIt == table.columnNames.end()) {
+                // Column not found in the table
+                cout << "Column " << columnName << " not found in table " << tableName << endl;
+                return;
+            }
+        }
+        
+        // Print the column names
+        if (!o.isQuiet) {
+            for (const auto& columnName : printColumns) {
+                cout << columnName << " ";
+            }
+            cout << endl;
+        }
 
         // Print the values from the selected columns for each row
         for (const auto& row : table.data) {
@@ -367,7 +411,9 @@ public:
                 // Find the index of the column
                 auto colIndex = find(table.columnNames.begin(), table.columnNames.end(), columnName);
                 // Print the value from the corresponding column
-                cout << row[static_cast<size_t>(distance(table.columnNames.begin(), colIndex))] << " ";
+                if (!o.isQuiet) {
+                    cout << row[static_cast<size_t>(distance(table.columnNames.begin(), colIndex))] << " ";
+                }
             }
             cout << endl;
         }
@@ -384,8 +430,12 @@ public:
         auto tableIt2 = tables.find(tableName2);
         
         // Check if both tables exist
-        if (tableIt1 == tables.end() || tableIt2 == tables.end()) {
-            cout << "One of the tables specified does not exist" << endl;
+        if (tableIt1 == tables.end()) {
+            cout << "Error during JOIN: " << tableName1 << " does not name a table in the database\n";
+            return;
+        }
+        if (tableIt2 == tables.end()) {
+            cout << "Error during JOIN: " << tableName2 << " does not name a table in the database\n";
             return;
         }
 
@@ -396,8 +446,12 @@ public:
         auto colIndex2 = find(table2.columnNames.begin(), table2.columnNames.end(), colName2);
         
         // Check if both columns exist
-        if (colIndex1 == table1.columnNames.end() || colIndex2 == table2.columnNames.end()) {
-            cout << "One of the specified columns does not exist in its respective table" << endl;
+        if (colIndex1 == table1.columnNames.end()) {
+            cout << "Error during JOIN: " << colName1 << " does not name a column in " << tableName1 << endl;
+            return;
+        }
+        if (colIndex2 == table2.columnNames.end()) {
+            cout << "Error during JOIN: " << colName2 << " does not name a column in " << tableName2 << endl;
             return;
         }
 
@@ -407,8 +461,10 @@ public:
 
 
         // iterate through the columns that will be printed
-        for (const auto& cols : printColumns) {
-            cout << cols.second << " ";
+        if (!o.isQuiet) {
+            for (const auto& cols : printColumns) {
+                cout << cols.second << " ";
+            }
         }
         cout << endl;
         // Iterate through the first table
@@ -427,16 +483,24 @@ public:
                         if (printCol.first == 1) {
                             printTable = &table1;
                             auto colIndex = find(printTable->columnNames.begin(), printTable->columnNames.end(), printCol.second);
-                            if (colIndex != printTable->columnNames.end()) {
+                            if (colIndex == printTable->columnNames.end()) {
+                                cout << "Error during JOIN: " << printCol.first << " does not name a column in " << printTable->name << endl;
+                            } else {
                                 printColumnIndex = static_cast<size_t>(distance(printTable->columnNames.begin(), colIndex));
-                                cout << row1[printColumnIndex] << " ";
+                                if (!o.isQuiet) {
+                                    cout << row1[printColumnIndex] << " ";
+                                }
                             }
                         } else if (printCol.first == 2) {
                             printTable = &table2;
                             auto colIndex = find(printTable->columnNames.begin(), printTable->columnNames.end(), printCol.second);
-                            if (colIndex != printTable->columnNames.end()) {
+                            if (colIndex == printTable->columnNames.end()) {
+                                cout << "Error during JOIN: " << printCol.first << " does not name a column in " << printTable->name << endl;
+                            } else {
                                 printColumnIndex = static_cast<size_t>(distance(printTable->columnNames.begin(), colIndex));
-                                cout << row2[printColumnIndex] << " ";
+                                if (!o.isQuiet) {
+                                    cout << row2[printColumnIndex] << " ";
+                                }
                             }
                         }
                     }
@@ -448,6 +512,51 @@ public:
         // Print summary
         cout << "Printed " << numPrinted << " rows from joining " << tableName1 << " to " << tableName2 << endl;
     }
+
+    void generateIndex(const string& tableName, const string& indexType, const string& colName) {
+        // Check if the specified table exists
+        auto tableIt = tables.find(tableName);
+        if (tableIt == tables.end()) {
+            cout << "Error during GENERATE: " << tableName << " does not name a table in the database\n";
+            return;
+        }
+
+        // Check if the specified column exists in the table
+        const Table& table = tableIt->second;
+        auto colIndex = find(table.columnNames.begin(), table.columnNames.end(), colName);
+        if (colIndex == table.columnNames.end()) {
+            cout << "Error during GENERATE>: " << colName << " does not name a column in " << tableName << endl;
+            return;
+        }
+
+        // Create the index based on the specified type
+        if (indexType == "hash") {
+            // Create a hash index
+            Index newIndex;
+            newIndex.indexType = indexType;
+            newIndex.columnName = colName;
+            // Populate the hash index
+            for (size_t i = 0; i < table.data.size(); ++i) {
+                const string& key = table.data[i][static_cast<size_t>(distance(table.columnNames.begin(), colIndex))];
+                newIndex.hashIndex[key].push_back(i);
+            }
+            // Update or insert the index
+            indices[tableName] = newIndex;
+
+            cout << "Created " << indexType << " index for table " << tableName << " on column " << colName << ", with "
+                << newIndex.hashIndex.size() << " distinct keys" << endl;
+        } else if (indexType == "bst") {
+            // Create a bst index
+            // Implement the code for bst index creation here (using std::map<>)
+            cout << "BST index creation is not implemented yet" << endl;
+        } else { // not sure if this is needed
+            // Invalid index type
+            cout << "Invalid index type: " << indexType << endl;
+        }
+    }
+
+    Database::Database(Options& opt) :
+    o(opt) {}
 
 };
 
@@ -494,7 +603,7 @@ void getMode(int argc, char *argv[], Options &opt)
 int main(int argc, char *argv[]) {
     Options opt;
     getMode(argc, argv, opt);
-    Database b;
+    Database b(opt);
     b.processCommands();
     return 0;
 }
