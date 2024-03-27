@@ -1,0 +1,141 @@
+    void printFromAll(const string& tableName, const vector<string>& printColumns) {
+        auto tableIt = tables.find(tableName);
+        const Table& table = tableIt->second;
+
+        // error checking
+        if (tableIt == tables.end()) {
+            // Table not found
+            cout << "Error during PRINT: " << tableName  << " does not name a table in the database\n";
+            return;
+        }
+
+        for (const auto& columnName : printColumns) {
+            // Check if the column exists in the table
+            auto colIt = find(table.columnNames.begin(), table.columnNames.end(), columnName);
+            // error checking
+            if (colIt == table.columnNames.end()) {
+                // Column not found in the table
+                 cout << "Error during PRINT: " << columnName << " does not name a column in " << tableName << endl;
+                return;
+            }
+        }
+        
+        // Print the column names
+        if (!o.isQuiet) {
+            for (const auto& columnName : printColumns) {
+                cout << columnName << " ";
+            }
+            cout << endl;
+        }
+
+        // Print the values from the selected columns for each row
+        for (const auto& row : table.data) {
+            for (const auto& columnName : printColumns) {
+                // Find the index of the column
+                auto colIndex = find(table.columnNames.begin(), table.columnNames.end(), columnName);
+                // Print the value from the corresponding column
+                if (!o.isQuiet) {
+                    // bool to string
+                    const auto& index = static_cast<size_t>(distance(table.columnNames.begin(), colIndex));
+                    const TableEntry& value = row[index];
+                    if (table.columnTypes[index] == EntryType::Bool) cout << boolToString(value) << " ";
+                    else cout << value << " ";
+                }
+            }
+            cout << endl;
+        }
+
+        // Print summary
+        cout << "Printed " << table.data.size() << " matching rows from " << tableName << endl;
+    }
+
+    void joinTables(const string& tableName1, const string& tableName2, const string& colName1, const string& colName2, const vector<pair<size_t, string>>& printColumns) {
+        int numPrinted = 0;
+        
+        // Find the tables
+        auto tableIt1 = tables.find(tableName1);
+        auto tableIt2 = tables.find(tableName2);
+        
+        // Check if both tables exist
+        if (tableIt1 == tables.end()) {
+            cout << "Error during JOIN: " << tableName1 << " does not name a table in the database\n";
+            return;
+        }
+        if (tableIt2 == tables.end()) {
+            cout << "Error during JOIN: " << tableName2 << " does not name a table in the database\n";
+            return;
+        }
+
+        // Find the columns
+        const Table& table1 = tableIt1->second;
+        const Table& table2 = tableIt2->second;
+        auto colIndex1 = find(table1.columnNames.begin(), table1.columnNames.end(), colName1);
+        auto colIndex2 = find(table2.columnNames.begin(), table2.columnNames.end(), colName2);
+        
+        // Check if both columns exist
+        if (colIndex1 == table1.columnNames.end()) {
+            cout << "Error during JOIN: " << colName1 << " does not name a column in " << tableName1 << endl;
+            return;
+        }
+        if (colIndex2 == table2.columnNames.end()) {
+            cout << "Error during JOIN: " << colName2 << " does not name a column in " << tableName2 << endl;
+            return;
+        }
+
+        // Get the indices of the columns
+        size_t columnIndex1 = static_cast<size_t>(distance(table1.columnNames.begin(), colIndex1));
+        size_t columnIndex2 = static_cast<size_t>(distance(table2.columnNames.begin(), colIndex2));
+
+
+        // iterate through the columns that will be printed
+        if (!o.isQuiet) {
+            for (const auto& cols : printColumns) {
+                cout << cols.second << " ";
+            }
+            cout << endl;
+        }
+        // Iterate through the first table
+        for (const auto& row1 : table1.data) {
+            // Find rows in the second table that match the condition
+            for (const auto& row2 : table2.data) {
+                if (row1[columnIndex1] == row2[columnIndex2]) {
+                    numPrinted++;
+                    // Print the selected columns
+                    for (const auto& printCol : printColumns) {
+                        // size_t tableIndex = printCol.first;
+                        // const string& columnName = printCol.second;
+                        const Table* printTable = nullptr;
+                        size_t printColumnIndex = 0;
+
+                        if (printCol.first == 1) {
+                            printTable = &table1;
+                            auto colIndex = find(printTable->columnNames.begin(), printTable->columnNames.end(), printCol.second);
+                            if (colIndex == printTable->columnNames.end()) {
+                                cout << "Error during JOIN: " << printCol.first << " does not name a column in " << printTable->name << endl;
+                            } else {
+                                printColumnIndex = static_cast<size_t>(distance(printTable->columnNames.begin(), colIndex));
+                                if (!o.isQuiet) {
+                                    cout << row1[printColumnIndex] << " ";
+                                }
+                            }
+                        } else if (printCol.first == 2) {
+                            printTable = &table2;
+                            auto colIndex = find(printTable->columnNames.begin(), printTable->columnNames.end(), printCol.second);
+                            if (colIndex == printTable->columnNames.end()) {
+                                cout << "Error during JOIN: " << printCol.first << " does not name a column in " << printTable->name << endl;
+                            } else {
+                                printColumnIndex = static_cast<size_t>(distance(printTable->columnNames.begin(), colIndex));
+                                if (!o.isQuiet) {
+                                    cout << row2[printColumnIndex] << " ";
+                                }
+                            }
+                        }
+                    }
+                    cout << endl;
+                }
+            }
+        }
+
+        // Print summary
+        cout << "Printed " << numPrinted << " rows from joining " << tableName1 << " to " << tableName2 << endl;
+    }

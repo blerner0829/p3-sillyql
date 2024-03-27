@@ -1,0 +1,37 @@
+# Awesome Spec Example!
+
+CREATE pets 3 string bool bool Name likes_cats? likes_dogs?
+INSERT INTO pets 2 ROWS
+Sith true true
+Paoletti true false
+
+
+CREATE 281class 3 string string bool emotion person Y/N
+
+INSERT INTO 281class 8 ROWS
+stressed students false
+busy office_hours true
+stressed students true
+stressed Paoletti true
+happy Sith true
+victorious Sith true
+
+
+GENERATE FOR 281class hash INDEX ON emotion
+
+
+
+JOIN pets AND 281class WHERE Name = person AND PRINT 3 Name 1 emotion 2 likes_dogs? 1
+
+
+# JOIN OUTPUT: 
+# Name emotion likes_dogs? 
+# Sith happy true 
+# Sith victorious true 
+# Paoletti stressed false
+# Printed 3 rows from joining pets to 281class
+
+
+REMOVE pets
+REMOVE 281class
+QUIT

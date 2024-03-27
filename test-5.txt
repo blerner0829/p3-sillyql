@@ -1,0 +1,10 @@
+# BASIC CREATE, INSERT, QUIT
+
+CREATE pets 3 string bool bool Name likes_cats? likes_dogs?
+
+INSERT INTO pets 2 ROWS
+person true true
+Paoletti true false
+
+PRINT FROM pets 2 Name likes_dogs? ALL 
+QUIT
