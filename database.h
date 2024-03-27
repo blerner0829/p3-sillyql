@@ -48,10 +48,17 @@ struct Options {
     bool isQuiet = false;
 };
 
+enum IndexType {
+    NONE,
+    BST,
+    HASH
+};
+
 struct Index {
-    EntryType indexType;
-    string columnName;
-    unordered_map<TableEntry, vector<size_t>> hashIndex; // Mapping from column value to row indices
+    IndexType indexType = NONE;
+    string columnName = "";
+    unordered_map<TableEntry*, vector<size_t>> hashIndex; // Mapping from column value to row indices
+    map<TableEntry*, vector<size_t>> bstIndex;
 };
 
 struct Table {
@@ -59,7 +66,8 @@ struct Table {
     vector<string> columnNames;
     vector<EntryType> columnTypes; // use entry type enum
     vector<vector<TableEntry>> data;
-    map<string, Index> valuesIndex; // string column name
+    Index index; // string column name
+    unordered_map<string, size_t> colNameIndex;
     // columnName maps value to row number of entries that have that value
 };
 
@@ -177,7 +185,7 @@ public:
             }
             default: {
                 cout << "% ";
-                cout << "Error: unrecognized command\n";
+                cout << "Error: unrecognized command " << commandType << endl;
                 string junk;
                 getline(cin, junk);
                 break;
@@ -215,15 +223,8 @@ public:
             } else {
                 // Populate column names
                 newTable.columnNames.push_back(columnSpecs[i]);
+                newTable.colNameIndex[columnSpecs[i]] = i - static_cast<size_t>(numColumns);
             }
-        }
-
-        // Initialize index structures for each column
-        for (size_t i = 0; i < static_cast<size_t>(numColumns); ++i) {
-            Index newIndex;
-            newIndex.columnName = newTable.columnNames[i];
-            newIndex.indexType = newTable.columnTypes[i];
-            newTable.valuesIndex.emplace(newIndex.columnName, move(newIndex));
         }
 
         tables.emplace(tableName, move(newTable));
@@ -235,6 +236,7 @@ public:
         }
         cout << " created\n";
     }
+
     // Method to insert new rows into a specified table
     void insertInto(const string& tableName, int numRows) {
         // Find the table
@@ -291,10 +293,23 @@ public:
                 default:
                     break;
                 }
-                table.valuesIndex[table.columnNames[j]].hashIndex[values[j]].push_back(startIndex + static_cast<size_t>(i));
+                if (table.columnNames[j] == table.index.columnName) {
+                    switch (table.index.indexType)
+                    {
+                    case IndexType::HASH:
+                        table.index.hashIndex[&values[j]].push_back(startIndex + static_cast<size_t>(i));
+                        break;
+                    case IndexType::BST:
+                        table.index.bstIndex[&values[j]].push_back(startIndex + static_cast<size_t>(i));
+                        break;
+                    default:
+                        break;
+                    }
+                }
             }
             table.data.push_back(values);
         }
+
 
         // might have runtime errors for pushing back to vecotr that does not exist
         size_t endIndex = table.data.size() - 1; // Index of the last row added
@@ -343,20 +358,23 @@ public:
                 break;
             }
             if (deleteRow) {
-                // Remove references from the index
-                // const auto& indexColumn = table.valuesIndex[columnName];
-                // auto& hashIndex = indexColumn.hashIndex;
-                // auto& rowIndices = hashIndex[entry];
-                // // Remove all occurrences of row index from the vector
-                // rowIndices.erase(remove(rowIndices.begin(), rowIndices.end(), deletedRows), rowIndices.end());
+                if (table.index.indexType != IndexType::NONE) {
+                    TableEntry* t = &(*it)[table.colNameIndex[table.index.columnName]];
+                    switch (table.index.indexType)
+                    {
+                    case IndexType::HASH:
+                        table.index.hashIndex[t].erase(table.index.hashIndex[t].begin() + distance(table.data.begin(), it));
+                        break;
+                    case IndexType::BST:
+                        table.index.bstIndex[t].erase(table.index.bstIndex[t].begin() + distance(table.data.begin(), it));
+                        break;
+                    default:
+                        break;
+                    }
+                }
                 it = table.data.erase(it);
                 ++deletedRows;
             }
-
-            if (deleteRow) {
-                it = table.data.erase(it);
-                ++deletedRows;
-            } 
             else ++it;
         }
 
@@ -622,7 +640,6 @@ public:
         cout << "Printed " << numPrinted << " rows from joining " << tableName1 << " to " << tableName2 << endl;
     }
 
-
     void generateIndex(const string& tableName, const string& indexType, const string& colName) {
         // Check if the specified table exists
         auto tableIt = tables.find(tableName);
@@ -632,39 +649,37 @@ public:
         }
 
         // Check if the specified column exists in the table
-        const Table& table = tableIt->second;
+        Table& table = tableIt->second;
         auto colIndex = find(table.columnNames.begin(), table.columnNames.end(), colName);
         if (colIndex == table.columnNames.end()) {
             cout << "Error during GENERATE>: " << colName << " does not name a column in " << tableName << endl;
             return;
         }
-        string testing = indexType; // for testing
+
+        table.index.bstIndex.clear();
+        table.index.hashIndex.clear();
+        table.index.columnName = colName;
         
-
-        // // Create the index based on the specified type
-        // if (indexType == "hash") {
-        //     // Create a hash index
-        //     Index newIndex;
-        //     newIndex.indexType = indexType;
-        //     newIndex.columnName = colName;
-        //     // Populate the hash index
-        //     for (size_t i = 0; i < table.data.size(); ++i) {
-        //         const string& key = table.data[i][static_cast<size_t>(distance(table.columnNames.begin(), colIndex))];
-        //         newIndex.hashIndex[key].push_back(i);
-        //     }
-        //     // Update or insert the index
-        //     indices[tableName] = newIndex;
-
-        //     cout << "Created " << indexType << " index for table " << tableName << " on column " << colName << ", with "
-        //         << newIndex.hashIndex.size() << " distinct keys" << endl;
-        // } else if (indexType == "bst") {
-        //     // Create a bst index
-        //     // Implement the code for bst index creation here (using std::map<>)
-        //     cout << "BST index creation is not implemented yet" << endl;
-        // } else { // not sure if this is needed
-        //     // Invalid index type
-        //     cout << "Invalid index type: " << indexType << endl;
-        // }
+        switch (indexType.at(0))
+        {
+        case 'h':
+            table.index.indexType = IndexType::HASH;
+            for (size_t i = 0; i < table.data.size(); i++) {
+                table.index.hashIndex[&(table.data[i][table.colNameIndex[table.index.columnName]])].push_back(i);
+            }
+            
+            break;
+        case 'b':
+            table.index.indexType = IndexType::BST;
+            for (size_t i = 0; i < table.data.size(); i++) {
+                table.index.bstIndex[&(table.data[i][table.colNameIndex[table.index.columnName]])].push_back(i);
+            }
+            break;
+        default:
+            break;
+            
+        }
+        cout << "Created " << indexType << " index for table " << tableName << " on column " << colName << ", with " << max(table.index.hashIndex.size(), table.index.bstIndex.size()) << " distinct keys" << endl;
     }
     
     string boolToString(const TableEntry val) {

@@ -11,12 +11,12 @@ happy Sith true
 victorious Sith true
 DELETE FROM 281class WHERE person = Darden
 GENERATE FOR 281class hash INDEX ON emotion
-PRINT FROM 281class 2 person emotion WHERE Y/N = true
-CREATE pets 3 string bool bool Name likes_cats? likes_dogs?
-INSERT INTO pets 2 ROWS
-Sith true true
-Paoletti true false
-JOIN pets AND 281class WHERE Name = person AND PRINT 3 Name 1 emotion 2 likes_dogs? 1
-REMOVE pets
-REMOVE 281class
+# PRINT FROM 281class 2 person emotion WHERE Y/N = true
+# CREATE pets 3 string bool bool Name likes_cats? likes_dogs?
+# INSERT INTO pets 2 ROWS
+# Sith true true
+# Paoletti true false
+# JOIN pets AND 281class WHERE Name = person AND PRINT 3 Name 1 emotion 2 likes_dogs? 1
+# REMOVE pets
+# REMOVE 281class
 QUIT
