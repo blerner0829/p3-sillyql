@@ -1,3 +1,0 @@
-% % New table 281class with column(s) emotion person Y/N created
-% Added 8 rows to 281class from position 0 to 7
-% % % person emotion 
