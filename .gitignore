@@ -1,1 +1,4 @@
 *.DS_Store
+sillyql_debug
+fullsubmit.tar.gz
+sillyql_debug.dSYM/*
