@@ -57,10 +57,14 @@ void getMode(int argc, char *argv[], Options &opt)
 } // getMode()
 
 int main(int argc, char *argv[]) {
+
+    ios_base::sync_with_stdio(false);
+    cin >> std::boolalpha;  // add these two lines
+    cout << std::boolalpha;
+
     Options opt;
     getMode(argc, argv, opt);
-    
-    ios_base::sync_with_stdio(false);
+
 
     Database b(opt);
     b.processCommands();

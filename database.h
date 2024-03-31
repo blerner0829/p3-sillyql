@@ -9,7 +9,6 @@
 #include <deque>
 #include <unordered_map>
 #include <map>
-
 #include "TableEntry.h"
 
 
@@ -248,8 +247,8 @@ public:
         // Find the table
         auto tableIt = tables.find(tableName);
         if (tableIt == tables.end()) {
-            // Table not found
             cout << "Error during INSERT: " << tableName  << " does not name a table in the database\n";
+            // Table not found
             string junk;
             for (int i = 0; i < numRows; ++i) {
                 getline(cin, junk);
@@ -418,9 +417,8 @@ public:
         cout << "Table " << tableName << " removed" << endl;
     }
     
-    template<typename T>
-    void printFromWhere(const string& tableName, const vector<string>& printColumns, int& numCols, const string& lhs, const char& opp, const T& rhs) {
-        int numMatches = 0;
+    void printFromWhere(const string& tableName, const vector<string>& printColumns, int& numCols, const string& filterColumn, const char& opp, string& filterValueString) {
+    
         // Find the table
         auto tableIt = tables.find(tableName);
 
@@ -433,22 +431,11 @@ public:
             return;
         }
 
-        for (const auto& columnName : printColumns) {
-            // Check if the column exists in the table
-            auto colIt = find(table.columnNames.begin(), table.columnNames.end(), columnName);
-            // error checking
-            if (colIt == table.columnNames.end()) {
-                // Column not found in the table
-                cout << "Error during PRINT: " << columnName << " does not name a column in " << tableName << endl;
-                return;
-            }
-        }
-
-        auto colIt = find(table.columnNames.begin(), table.columnNames.end(), lhs);
+        auto filterColIt = find(table.columnNames.begin(), table.columnNames.end(), filterColumn);
         // TODO: Write a test case for this
         // error checking for WHERE statement
-        if (colIt == table.columnNames.end()) {
-            cout << "Error during PRINT: " << lhs << " does not name a column in " << tableName << endl;
+        if (filterColIt == table.columnNames.end()) {
+            cout << "Error during PRINT: " << filterColumn << " does not name a column in " << tableName << endl;
             return;
         }
 
@@ -462,7 +449,29 @@ public:
 
         // Find the index of the column to be compared
         // auto colIndex = find(table.columnNames.begin(), table.columnNames.end(), lhs);
-        size_t colIndex = static_cast<size_t>(distance(table.columnNames.begin(), colIt));
+        size_t colIndex = static_cast<size_t>(distance(table.columnNames.begin(), filterColIt));
+        EntryType valueType = table.columnTypes[colIndex];
+        TableEntry *valueEntry;
+
+        switch (valueType)
+        {
+        case EntryType::String:
+            valueEntry = new TableEntry(filterValueString);
+            break;
+        case EntryType::Int:
+            valueEntry = new TableEntry(stoi(filterValueString));
+            break;
+        case EntryType::Bool:
+            valueEntry = new TableEntry(stringToBool(filterValueString));
+            break;
+        case EntryType::Double:
+            valueEntry = new TableEntry(stod(filterValueString));
+            break;
+        default:
+            break;
+        }
+
+        int numMatches = 0;
         // Print the values from the selected columns for each row
         for (const auto& row : table.data) {
             bool print = false;
@@ -470,13 +479,13 @@ public:
             switch (opp)
             {
             case '=':
-                print = EqualTo(row[colIndex])(TableEntry(rhs));
+                print = EqualTo(row[colIndex])(*valueEntry);
                 break;
             case '>':
-                print = GreaterThan(row[colIndex])(TableEntry(rhs));
+                print = GreaterThan(row[colIndex])(*valueEntry);
                 break;
             case '<':
-                print = LessThan(row[colIndex])(TableEntry(rhs));
+                print = LessThan(row[colIndex])(*valueEntry);
                 break;
             default:
                 break;
@@ -493,6 +502,7 @@ public:
                 if (!o.isQuiet) cout << endl;
             }
         }
+        delete valueEntry;
         // Print summary
         cout << "Printed " << numMatches/numCols << " matching rows from " << tableName << endl;
 
@@ -684,18 +694,17 @@ public:
     //     if (val == true) return "true";
     //     else return "false";
     // }
-    // bool stringToBool(const string val) {
-    //     if (val == "true") return 1;
-    //     else return 0;
-    // }
-    bool isTableError(string command, string& tableName) {
-        auto tableIt = tables.find(tableName);
-        if (tableIt == tables.end()) {
-            cout << "Error during " << command << ": " << tableName  << " does not name a table in the database\n";
-            return true;
-        }
-        return false;        
+    bool stringToBool(string val) {
+        if (val == "true") return 1;
+        else return 0;
     }
+    // bool isTableError(string command, unordered_map<string, Table>::iterator TableIt& tableName) {
+    //     if (tableIt == tables.end()) {
+    //         cout << "Error during " << command << ": " << tableName  << " does not name a table in the database\n";
+    //         return true;
+    //     }
+    //     return false;        
+    // }
 
     Database(Options& opt) :
     o(opt) {}
