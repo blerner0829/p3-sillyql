@@ -20,7 +20,7 @@ struct EqualTo {
     EqualTo(const TableEntry& value) : value(value) {}
 
     bool operator()(const TableEntry& entry) const {
-        return entry == value;
+        return value == entry;
     }
 };
 
@@ -68,7 +68,6 @@ struct Table {
     vector<vector<TableEntry>> data;
     Index index; // string column name
     unordered_map<string, size_t> colNameIndex;
-    // columnName maps value to row number of entries that have that value
 };
 
 class Database {
@@ -80,8 +79,12 @@ public:
     void processCommands() {
         string commandType;
         cin >> commandType;
-        while (commandType != "QUIT") {
+        do {
             vector<string> tokens;
+            if (cin.fail()) {
+                cout << "Error: Reading from cin has failed\n";
+                return;
+            }
             switch (commandType[0])
             {
             case 'C': {
@@ -130,7 +133,11 @@ public:
                 }
                 cin >> keyword;
                 if (keyword == "WHERE") {
-                    printFromWhere(tableName, tokens);
+                    string lhs;
+                    char opp;
+                    string rhs;
+                    cin >> lhs >> opp >> rhs;
+                    printFromWhere(tableName, tokens, numCols, lhs, opp, rhs);
                 } else { // all
                     printFromAll(tableName, tokens);
                 }
@@ -185,15 +192,14 @@ public:
             }
             default: {
                 cout << "% ";
-                cout << "Error: unrecognized command " << commandType << endl;
+                cout << "Error: Unknown command line option" << endl;
                 string junk;
                 getline(cin, junk);
                 break;
             }
             }
-            cin >> commandType;
             tokens.clear();
-        }
+        } while (cin >> commandType && commandType != "QUIT");
         quit();
     }
    
@@ -411,13 +417,10 @@ public:
         // Print confirmation message
         cout << "Table " << tableName << " removed" << endl;
     }
-
-    void printFromWhere(const string& tableName, const vector<string>& printColumns) {
-        string lhs;
-        char opp;
-        string rhs;
+    
+    template<typename T>
+    void printFromWhere(const string& tableName, const vector<string>& printColumns, int& numCols, const string& lhs, const char& opp, const T& rhs) {
         int numMatches = 0;
-        cin >> lhs >> opp >> rhs;
         // Find the table
         auto tableIt = tables.find(tableName);
 
@@ -487,11 +490,11 @@ public:
                     }
                     numMatches++;
                 }
-                cout << endl;
+                if (!o.isQuiet) cout << endl;
             }
         }
         // Print summary
-        cout << "Printed " << numMatches << " matching rows from " << tableName << endl;
+        cout << "Printed " << numMatches/numCols << " matching rows from " << tableName << endl;
 
     }
 
@@ -535,11 +538,10 @@ public:
                     // bool to string
                     const auto& index = static_cast<size_t>(distance(table.columnNames.begin(), colIndex));
                     const TableEntry& value = row[index];
-                    if (table.columnTypes[index] == EntryType::Bool) cout << boolToString(value) << " ";
-                    else cout << value << " ";
+                    cout << value << " ";
                 }
             }
-            cout << endl;
+            if (!o.isQuiet) cout << endl;
         }
 
         // Print summary
@@ -578,27 +580,6 @@ public:
             cout << "Error during JOIN: " << colName2 << " does not name a column in " << tableName2 << endl;
             return;
         }
-        // Find the indices of the columns to print
-        vector<size_t> printIndices;
-        for (const auto& col : printColumns) {
-            if (col.first == 1) {
-                auto idx = find(table1.columnNames.begin(), table1.columnNames.end(), col.second);
-                if (idx != table1.columnNames.end()) {
-                    printIndices.push_back(static_cast<size_t>(distance(table1.columnNames.begin(), idx)));
-                } else {
-                    cout << "Error during JOIN: " << col.second << " does not name a column in " << tableName1 << endl;
-                    return;
-                }
-            } else if (col.first == 2) {
-                auto idx = find(table2.columnNames.begin(), table2.columnNames.end(), col.second);
-                if (idx != table2.columnNames.end()) {
-                    printIndices.push_back(static_cast<size_t>(distance(table2.columnNames.begin(), idx)));
-                } else {
-                    cout << "Error during JOIN: " << col.second << " does not name a column in " << tableName2 << endl;
-                    return;
-                }
-            }
-        }
 
         // Print the column names
         if (!o.isQuiet) {
@@ -607,24 +588,41 @@ public:
             }
             cout << endl;
         }
-
+        
         // Iterate through the first table
         for (const auto& row1 : table1.data) {
             // Find the matching rows in the second table
             for (const auto& row2 : table2.data) {
                 if (row1[static_cast<size_t>(distance(table1.columnNames.begin(), colIndex1))] == row2[static_cast<size_t>(distance(table2.columnNames.begin(), colIndex2))]) {
                     // Print the values from the selected columns for each matching row
-                    for (const auto& idx : printIndices) {
-                        if (!o.isQuiet) {
-                            if (idx < table1.columnNames.size()) {
-                                cout << row1[idx] << " ";
+                    numPrinted++;
+                    if (o.isQuiet) continue;
+                    for (const auto& col : printColumns) {
+                        if (col.first == 1) {
+                            // find column name in the table number specified in printColumns
+                            auto idx = find(table1.columnNames.begin(), table1.columnNames.end(), col.second);
+                            if (idx != table1.columnNames.end()) {
+                                auto val = static_cast<size_t>(distance(table1.columnNames.begin(), idx));
+                                cout << row1[val] << " ";
+                                // cout << row1[static_cast<size_t>(distance(table1.columnNames.begin(), idx))] << " ";
+
                             } else {
-                                cout << row2[idx - table1.columnNames.size()] << " ";
+                                cout << "Error during JOIN: " << col.second << " does not name a column in " << tableName1 << endl;
+                                return;
+                            }
+                        } else if (col.first == 2) {
+                            auto idx = find(table2.columnNames.begin(), table2.columnNames.end(), col.second);
+                            if (idx != table2.columnNames.end()) {
+                                auto val = static_cast<size_t>(distance(table2.columnNames.begin(), idx));
+                                cout << row2[val] << " ";
+
+                            } else {
+                                cout << "Error during JOIN: " << col.second << " does not name a column in " << tableName2 << endl;
+                                return;
                             }
                         }
                     }
                     cout << endl;
-                    numPrinted++;
                 }
             }
         }
@@ -682,9 +680,21 @@ public:
         cout << "Created " << indexType << " index for table " << tableName << " on column " << colName << ", with " << max(table.index.hashIndex.size(), table.index.bstIndex.size()) << " distinct keys" << endl;
     }
     
-    string boolToString(const TableEntry val) {
-        if (val == true) return "true";
-        else return "false";
+    // string boolToString(const TableEntry val) {
+    //     if (val == true) return "true";
+    //     else return "false";
+    // }
+    // bool stringToBool(const string val) {
+    //     if (val == "true") return 1;
+    //     else return 0;
+    // }
+    bool isTableError(string command, string& tableName) {
+        auto tableIt = tables.find(tableName);
+        if (tableIt == tables.end()) {
+            cout << "Error during " << command << ": " << tableName  << " does not name a table in the database\n";
+            return true;
+        }
+        return false;        
     }
 
     Database(Options& opt) :
