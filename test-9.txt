@@ -1,0 +1,62 @@
+# error checking
+CREATE 281class 3 string string int emotion person Y/N
+UNKNOWN command type
+
+CREATE 281class 3 string string int emotion person test
+
+INSERT INTO unknown 8 ROWS
+happy Darden true
+stressed students false
+busy office_hours true
+stressed students true
+stressed Paoletti true
+happy Darden true
+happy Sith true
+victorious Sith true
+
+INSERT INTO 281class 8 ROWS
+happy Darden true
+stressed students false
+busy office_hours true
+stressed students true
+stressed Paoletti true
+happy Darden true
+happy Sith true
+victorious Sith true
+
+CREATE pets 3 string bool bool Name likes_cats? likes_dogs?
+INSERT INTO pets 2 ROWS
+Sith true true
+Paoletti true false
+
+PRINT FROM unknown 2 person emotion WHERE Y/N = true
+PRINT FROM 281class 2 person emotion WHERE unknown = true
+PRINT FROM 281class 2 unknown emotion WHERE unknown = true
+PRINT FROM 281class 2 person unknown WHERE unknown = true
+
+PRINT FROM unknown 2 person emotion ALL
+PRINT FROM 281class 2 unknown emotion ALL
+PRINT FROM 281class 2 person unknown ALL
+
+JOIN unknown AND 281class WHERE Name = person AND PRINT 3 Name 1 emotion 2 likes_dogs? 1
+JOIN pets AND unkown WHERE Name = person AND PRINT 3 Name 1 emotion 2 likes_dogs? 1
+
+JOIN pets AND 281class WHERE unkown = person AND PRINT 3 Name 1 emotion 2 likes_dogs? 1
+JOIN pets AND 281class WHERE Name = unknown AND PRINT 3 Name 1 emotion 2 likes_dogs? 1
+JOIN pets AND 281class WHERE Name = person AND PRINT 3 unkown 1 emotion 2 likes_dogs? 1
+JOIN pets AND 281class WHERE Name = person AND PRINT 3 Name 1 emotion 2 unknown 1
+
+GENERATE FOR unknown bst INDEX ON Y/N
+GENERATE FOR 281class bst INDEX ON unknown
+
+DELETE FROM unknown WHERE person = Darden
+DELETE FROM 281class WHERE unknown = Darden
+
+REMOVE unknown
+
+REMOVE pets
+REMOVE 281class
+
+QUIT
+
+

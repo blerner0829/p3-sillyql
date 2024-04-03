@@ -226,7 +226,7 @@ public:
             }
             default: {
                 cout << "% ";
-                cout << "Error: Unknown command line option" << endl;
+                cout << "Error: unknown command line option" << endl;
                 string junk;
                 getline(cin, junk);
                 break;
@@ -398,6 +398,18 @@ public:
             deletedRows = deleteHelper(valueEntry, table, columnIndex, op);
         }
 
+        // regenerate index
+        switch (table.index.indexType)
+        {
+        case IndexType::BST:
+            generateIndex(table.name, "bdelete", table.index.columnName);
+            break;
+        case IndexType::HASH:
+            generateIndex(table.name, "hdelete", table.index.columnName);
+        default:
+            break;
+        }
+
         cout << "Deleted " << deletedRows << " rows from " << tableName << endl;
 
     }
@@ -534,10 +546,9 @@ public:
                 auto colIndex = find(table.columnNames.begin(), table.columnNames.end(), columnName);
                 // Print the value from the corresponding column
                 if (!o.isQuiet) {
-                    // bool to string
                     const auto& index = static_cast<size_t>(distance(table.columnNames.begin(), colIndex));
-                    const TableEntry& value = row[index];
-                    cout << value << " ";
+                    // const TableEntry& value = row[index];
+                    cout << row[index] << " ";
                 }
             }
             if (!o.isQuiet) cout << endl;
@@ -675,7 +686,7 @@ public:
             break;
         
         }
-        cout << "Created " << indexType << " index for table " << tableName << " on column " << colName << ", with " << max(table.index.hashIndex.size(), table.index.bstIndex.size()) << " distinct keys" << endl;
+        if (indexType.at(1) != 'd') cout << "Created " << indexType << " index for table " << tableName << " on column " << colName << ", with " << max(table.index.hashIndex.size(), table.index.bstIndex.size()) << " distinct keys" << endl;
     }
 
     bool stringToBool(string val) {
@@ -720,7 +731,6 @@ public:
                     table.data.erase(remove_begin, table.data.end());
                 }
             }
-
         }
         // Print summary
         // removeif
@@ -744,7 +754,7 @@ public:
                             }
                         }
                         ++numMatches;
-                        cout << '\n';
+                        if (!o.isQuiet) cout << '\n';
                     }
                 }
             }
@@ -758,21 +768,22 @@ public:
                             }
                         }
                         ++numMatches;
-                        cout << '\n';
+                        if (!o.isQuiet) cout << '\n';
                     }
                 }
             }
             else if (opp == '>') {
+                // check 
                 for (auto bstIt = table.index.bstIndex.upper_bound(valueEntry); bstIt != table.index.bstIndex.end(); bstIt++) {
                     for (size_t i = 0; i < (*bstIt).second.size(); i++) {
                         for (const auto& columnName : printColumns) {
-                                size_t colIdx = table.colNameIndex.at(columnName);
-                                if (!o.isQuiet) {
-                                    cout << table.data[(*bstIt).second[i]][colIdx] << " ";
-                                }
+                            size_t colIdx = table.colNameIndex.at(columnName);
+                            if (!o.isQuiet) {
+                                cout << table.data[(*bstIt).second[i]][colIdx] << " ";
+                            }
                         }
                         ++numMatches;
-                        cout << '\n';
+                        if (!o.isQuiet) cout << '\n';
                     }
                 }
             }
@@ -807,14 +818,15 @@ public:
                         if (!o.isQuiet) {
                             cout << row[static_cast<size_t>(distance(table.columnNames.begin(), colIndex))] << " ";
                         }
-                        numMatches++;
                     }
                     if (!o.isQuiet) cout << endl;
+                    numMatches++;
                 }
             }
         }
         return numMatches;
     }
+    
     Database(Options& opt) :
     o(opt) {}
 

@@ -1,0 +1,28 @@
+CREATE 281class 3 string string int emotion person test
+INSERT INTO 281class 8 ROWS
+happy Darden 4
+stressed students 10
+busy office_hours 99
+stressed students 34
+stressed Paoletti 0
+happy Darden 2
+happy Sith 71
+victorious Sith 99
+
+GENERATE FOR 281class bst INDEX ON test
+
+PRINT FROM 281class 2 person emotion WHERE test > 34
+
+DELETE FROM 281class WHERE person = students
+
+PRINT FROM 281class 2 person emotion WHERE test > 34
+
+GENERATE FOR 281class hash INDEX ON test
+
+DELETE FROM 281class WHERE person = Darden
+
+PRINT FROM 281class 2 person emotion WHERE test < 34
+
+REMOVE 281class
+
+QUIT
