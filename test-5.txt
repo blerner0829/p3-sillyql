@@ -6,8 +6,17 @@ INSERT INTO pets 2 ROWS
 person true true
 Paoletti true false
 
+CREATE test 0
+
+INSERT INTO test 0 ROWS
+
+GENERATE FOR test bst INDEX ON
+
 PRINT FROM pets 4 Name likes_dogs? ALL 
 
 PRINT FROM pets 0 Name likes_dogs? ALL
+
+REMOVE pets
+REMOVE test
 
 QUIT

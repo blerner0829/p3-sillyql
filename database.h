@@ -226,7 +226,7 @@ public:
             }
             default: {
                 cout << "% ";
-                cout << "Error: unknown command line option" << endl;
+                cout << "Error: unknown command line option\n";
                 string junk;
                 getline(cin, junk);
                 break;
