@@ -1,9 +1,24 @@
 # Test file 1: # (comment), CREATE, INSERT, PRINT ... WHERE, QUIT\
 CREATE cities 5 string string int double bool name state population area is_capital?
+INSERT INTO cities 0 ROWS
+random data that shouldn't be read in
+
 INSERT INTO cities 4 ROWS
 Ann_Arbor Michigan 120782 28.69 false
 Lansing Michigan 116020 36.68 true
 Miami Florida 453579 55.25 false
 San_Francisco California 864816 46.87 false
-PRINT FROM cities 3 name state population WHERE is_capital? = false
+
+DELETE FROM cities WHERE is_capital? > 1
+
+DELETE FROM cities WHERE is_capital? < 0
+
+PRINT FROM cities 0 WHERE is_capital = true
+
+PRINT FROM cities 0 WHERE is_capital < 0
+PRINT FROM cities 0 WHERE is_capital > 1
+PRINT FROM cities 0 WHERE is_capital < 1
+
+GENERATE FOR cities bst INDEX ON is_capital?
+
 QUIT

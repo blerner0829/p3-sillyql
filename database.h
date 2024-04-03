@@ -537,21 +537,19 @@ public:
                 cout << columnName << " ";
             }
             cout << endl;
-        }
 
         // Print the values from the selected columns for each row
-        for (const auto& row : table.data) {
-            for (const auto& columnName : printColumns) {
-                // Find the index of the column
-                auto colIndex = find(table.columnNames.begin(), table.columnNames.end(), columnName);
-                // Print the value from the corresponding column
-                if (!o.isQuiet) {
+            for (const auto& row : table.data) {
+                for (const auto& columnName : printColumns) {
+                    // Find the index of the column
+                    auto colIndex = find(table.columnNames.begin(), table.columnNames.end(), columnName);
+                    // Print the value from the corresponding column
                     const auto& index = static_cast<size_t>(distance(table.columnNames.begin(), colIndex));
                     // const TableEntry& value = row[index];
                     cout << row[index] << " ";
                 }
+                cout << endl;
             }
-            if (!o.isQuiet) cout << endl;
         }
 
         // Print summary
@@ -611,28 +609,24 @@ public:
                         if (col.first == 1) {
                             // find column name in the table number specified in printColumns
                             auto idx = find(table1.columnNames.begin(), table1.columnNames.end(), col.second);
-                            if (idx != table1.columnNames.end()) {
-                                auto val = static_cast<size_t>(distance(table1.columnNames.begin(), idx));
-                                cout << row1[val] << " ";
-                                // cout << row1[static_cast<size_t>(distance(table1.columnNames.begin(), idx))] << " ";
-
-                            } else {
+                            if (idx == table1.columnNames.end()) {
                                 cout << "Error during JOIN: " << col.second << " does not name a column in " << tableName1 << endl;
                                 return;
                             }
+                            auto val = static_cast<size_t>(distance(table1.columnNames.begin(), idx));
+                            cout << row1[val] << " ";
+
                         } else if (col.first == 2) {
                             auto idx = find(table2.columnNames.begin(), table2.columnNames.end(), col.second);
-                            if (idx != table2.columnNames.end()) {
-                                auto val = static_cast<size_t>(distance(table2.columnNames.begin(), idx));
-                                cout << row2[val] << " ";
-
-                            } else {
+                            if (idx == table2.columnNames.end()) {
                                 cout << "Error during JOIN: " << col.second << " does not name a column in " << tableName2 << endl;
                                 return;
-                            }
+                            } 
+                            auto val = static_cast<size_t>(distance(table2.columnNames.begin(), idx));
+                            cout << row2[val] << " ";
                         }
                     }
-                    cout << endl;
+                    cout << '\n';
                 }
             }
         }
@@ -747,9 +741,9 @@ public:
                 auto bstItChecker = table.index.bstIndex.find(valueEntry);
                 if (bstItChecker != table.index.bstIndex.end()) {
                     for (size_t i = 0; i < (table.index.bstIndex).at(valueEntry).size(); i++) {
-                        for (const auto& columnName : printColumns) {
-                            size_t colIdx = table.colNameIndex.at(columnName);
-                            if (!o.isQuiet) {
+                        if (!o.isQuiet) {
+                            for (const auto& columnName : printColumns) {
+                                size_t colIdx = table.colNameIndex.at(columnName);
                                 cout << table.data[table.index.bstIndex.at(valueEntry)[i]][colIdx] << " ";
                             }
                         }
@@ -761,9 +755,9 @@ public:
             else if (opp == '<') {
                 for (auto bstIt = table.index.bstIndex.begin(); bstIt != table.index.bstIndex.lower_bound(valueEntry); bstIt++) {
                     for (size_t i = 0; i < (*bstIt).second.size(); i++) {
-                        for (const auto& columnName : printColumns) {
-                            size_t colIdx = table.colNameIndex.at(columnName);
-                            if (!o.isQuiet) {
+                        if (!o.isQuiet) {
+                            for (const auto& columnName : printColumns) {
+                                size_t colIdx = table.colNameIndex.at(columnName);
                                 cout << table.data[(*bstIt).second[i]][colIdx] << " ";
                             }
                         }
@@ -776,9 +770,9 @@ public:
                 // check 
                 for (auto bstIt = table.index.bstIndex.upper_bound(valueEntry); bstIt != table.index.bstIndex.end(); bstIt++) {
                     for (size_t i = 0; i < (*bstIt).second.size(); i++) {
-                        for (const auto& columnName : printColumns) {
-                            size_t colIdx = table.colNameIndex.at(columnName);
-                            if (!o.isQuiet) {
+                        if (!o.isQuiet) {
+                            for (const auto& columnName : printColumns) {
+                                size_t colIdx = table.colNameIndex.at(columnName);
                                 cout << table.data[(*bstIt).second[i]][colIdx] << " ";
                             }
                         }
@@ -813,13 +807,13 @@ public:
                 if (print) {
                     // cout << "COMPARED: " << row[colIndex] << " AND " << *valueEntry << endl;
                     // Print the values from the selected columns for this row
-                    for (const auto& columnName : printColumns) {
-                        auto colIndex = find(table.columnNames.begin(), table.columnNames.end(), columnName);
-                        if (!o.isQuiet) {
+                    if (!o.isQuiet) {
+                        for (const auto& columnName : printColumns) {
+                            auto colIndex = find(table.columnNames.begin(), table.columnNames.end(), columnName);
                             cout << row[static_cast<size_t>(distance(table.columnNames.begin(), colIndex))] << " ";
                         }
+                        cout << '\n';
                     }
-                    if (!o.isQuiet) cout << endl;
                     numMatches++;
                 }
             }

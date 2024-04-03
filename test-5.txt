@@ -6,5 +6,8 @@ INSERT INTO pets 2 ROWS
 person true true
 Paoletti true false
 
-PRINT FROM pets 2 Name likes_dogs? ALL 
+PRINT FROM pets 4 Name likes_dogs? ALL 
+
+PRINT FROM pets 0 Name likes_dogs? ALL
+
 QUIT
