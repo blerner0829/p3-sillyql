@@ -13,6 +13,41 @@
 
 
 using namespace std;
+// preds for deleteHelper
+struct predEqual {
+    TableEntry val;
+    size_t colIndex;
+    bool operator()(const vector<TableEntry>& input) {
+        return input[colIndex] == val;
+    }
+    predEqual(TableEntry& val1, size_t& colIndex1) : 
+        val(val1),
+        colIndex(colIndex1)
+    {} 
+};
+struct predGreater {
+    TableEntry val;
+    size_t colIndex;
+    bool operator()(const vector<TableEntry>& input) {
+        return input[colIndex] > val;
+    }
+    predGreater(TableEntry& val1, size_t& colIndex1) : 
+        val(val1),
+        colIndex(colIndex1)
+    {} 
+    
+};
+struct predLess {
+        TableEntry val;
+        size_t colIndex;
+        bool operator()(const vector<TableEntry>& input) {
+            return input[colIndex] < val;
+        }
+        predLess(TableEntry& val1, size_t& colIndex1) : 
+            val(val1),
+            colIndex(colIndex1)
+        {} 
+    };
 // Functor for the '==' operator
 struct EqualTo {
     TableEntry value;
@@ -56,8 +91,8 @@ enum IndexType {
 struct Index {
     IndexType indexType = NONE;
     string columnName = "";
-    unordered_map<TableEntry*, vector<size_t>> hashIndex; // Mapping from column value to row indices
-    map<TableEntry*, vector<size_t>> bstIndex;
+    unordered_map<TableEntry, vector<size_t>> hashIndex; // Mapping from column value to row indices
+    map<TableEntry, vector<size_t>> bstIndex;
 };
 
 struct Table {
@@ -136,7 +171,7 @@ public:
                     char opp;
                     string rhs;
                     cin >> lhs >> opp >> rhs;
-                    printFromWhere(tableName, tokens, numCols, lhs, opp, rhs);
+                    printFromWhere(tableName, tokens, lhs, opp, rhs);
                 } else { // all
                     printFromAll(tableName, tokens);
                 }
@@ -302,10 +337,10 @@ public:
                     switch (table.index.indexType)
                     {
                     case IndexType::HASH:
-                        table.index.hashIndex[&values[j]].push_back(startIndex + static_cast<size_t>(i));
+                        table.index.hashIndex[values[j]].push_back(startIndex + static_cast<size_t>(i));
                         break;
                     case IndexType::BST:
-                        table.index.bstIndex[&values[j]].push_back(startIndex + static_cast<size_t>(i));
+                        table.index.bstIndex[values[j]].push_back(startIndex + static_cast<size_t>(i));
                         break;
                     default:
                         break;
@@ -324,8 +359,9 @@ public:
     }
 
     // Method to delete rows from the specified table based on conditions
-    void deleteFrom(const string& tableName, const string& columnName, const char& op, const string& value) {
+    void deleteFrom(const string& tableName, const string& columnName, const char& op, string& filterValueString) {
         // Find the table
+        int deletedRows = 0;
         auto tableIt = tables.find(tableName);
         if (tableIt == tables.end()) {
             // Table not found
@@ -342,49 +378,28 @@ public:
             return;
         }
         size_t columnIndex = static_cast<size_t>(distance(table.columnNames.begin(), colIndex));
+        EntryType valueType = table.columnTypes[columnIndex];
+        // TableEntry *valueEntry = makeEntry(filterValueString, valueType);
+        if (valueType == EntryType::String) {
+            TableEntry valueEntry(filterValueString);
+            deletedRows = deleteHelper(valueEntry, table, columnIndex, op);
+        }
+        else if (valueType == EntryType::Int) {
+            TableEntry valueEntry(stoi(filterValueString));
+            deletedRows = deleteHelper(valueEntry, table, columnIndex, op);
+        }
+        else if (valueType == EntryType::Bool) {
+            TableEntry valueEntry(stringToBool(filterValueString));
+            deletedRows = deleteHelper(valueEntry, table, columnIndex, op);
 
-        // Delete rows based on conditions
-        int deletedRows = 0;
-        for (auto it = table.data.begin(); it != table.data.end();) {
-            // const TableEntry& entry((*it)[columnIndex]);
-            bool deleteRow = false;
-            switch (op)
-            {
-            case '=':
-                deleteRow = EqualTo(TableEntry(value))((*it)[columnIndex]);
-                break;
-            case '>':
-                deleteRow = GreaterThan((*it)[columnIndex])(TableEntry(value));
-                break;
-            case '<':
-                deleteRow = LessThan((*it)[columnIndex])(TableEntry(value));
-                break;
-            default:
-                break;
-            }
-            if (deleteRow) {
-                if (table.index.indexType != IndexType::NONE) {
-                    TableEntry* t = &(*it)[table.colNameIndex[table.index.columnName]];
-                    switch (table.index.indexType)
-                    {
-                    case IndexType::HASH:
-                        table.index.hashIndex[t].erase(table.index.hashIndex[t].begin() + distance(table.data.begin(), it));
-                        break;
-                    case IndexType::BST:
-                        table.index.bstIndex[t].erase(table.index.bstIndex[t].begin() + distance(table.data.begin(), it));
-                        break;
-                    default:
-                        break;
-                    }
-                }
-                it = table.data.erase(it);
-                ++deletedRows;
-            }
-            else ++it;
+        }
+        else if (valueType == EntryType::Double) {
+            TableEntry valueEntry(stod(filterValueString));
+            deletedRows = deleteHelper(valueEntry, table, columnIndex, op);
         }
 
-        // Print summary
         cout << "Deleted " << deletedRows << " rows from " << tableName << endl;
+
     }
     // Method to quit the program and clean up all data
     void quit() {
@@ -417,8 +432,8 @@ public:
         cout << "Table " << tableName << " removed" << endl;
     }
     
-    void printFromWhere(const string& tableName, const vector<string>& printColumns, int& numCols, const string& filterColumn, const char& opp, string& filterValueString) {
-    
+    void printFromWhere(const string& tableName, vector<string>& printColumns, const string& filterColumn, char& opp, string& filterValueString) {
+        int numMatches = 0;
         // Find the table
         auto tableIt = tables.find(tableName);
 
@@ -438,7 +453,14 @@ public:
             cout << "Error during PRINT: " << filterColumn << " does not name a column in " << tableName << endl;
             return;
         }
-
+        for (const auto& columnName : printColumns) {
+            auto colItCheck = find(table.columnNames.begin(), table.columnNames.end(), columnName);
+            if (colItCheck == table.columnNames.end()) {
+                cout << "Error during PRINT: " << columnName << " does not name a column in " << tableName << endl;
+                cout << "Printed 0 matching rows from " << tableName << endl;
+                return;
+            }
+        }
         // Print the column names if !quietMode
         if (!o.isQuiet) {
             for (const auto& columnName : printColumns) {
@@ -451,60 +473,27 @@ public:
         // auto colIndex = find(table.columnNames.begin(), table.columnNames.end(), lhs);
         size_t colIndex = static_cast<size_t>(distance(table.columnNames.begin(), filterColIt));
         EntryType valueType = table.columnTypes[colIndex];
-        TableEntry *valueEntry;
 
-        switch (valueType)
-        {
-        case EntryType::String:
-            valueEntry = new TableEntry(filterValueString);
-            break;
-        case EntryType::Int:
-            valueEntry = new TableEntry(stoi(filterValueString));
-            break;
-        case EntryType::Bool:
-            valueEntry = new TableEntry(stringToBool(filterValueString));
-            break;
-        case EntryType::Double:
-            valueEntry = new TableEntry(stod(filterValueString));
-            break;
-        default:
-            break;
+        if (valueType == EntryType::String) {
+            TableEntry valueEntry(filterValueString);
+            numMatches = printFromHelper(filterColumn, table, printColumns, valueEntry, opp, colIndex);
+        }
+        else if (valueType == EntryType::Int) {
+            TableEntry valueEntry(stoi(filterValueString));
+            numMatches = printFromHelper(filterColumn, table, printColumns, valueEntry, opp, colIndex);
+        }
+        else if (valueType == EntryType::Bool) {
+            TableEntry valueEntry(stringToBool(filterValueString));
+            numMatches = printFromHelper(filterColumn, table, printColumns, valueEntry, opp, colIndex);
+
+        }
+        else if (valueType == EntryType::Double) {
+            TableEntry valueEntry(stod(filterValueString));
+            numMatches = printFromHelper(filterColumn, table, printColumns, valueEntry, opp, colIndex);
         }
 
-        int numMatches = 0;
-        // Print the values from the selected columns for each row
-        for (const auto& row : table.data) {
-            bool print = false;
-            // const TableEntry& entry = row[colIndex];
-            switch (opp)
-            {
-            case '=':
-                print = EqualTo(row[colIndex])(*valueEntry);
-                break;
-            case '>':
-                print = GreaterThan(row[colIndex])(*valueEntry);
-                break;
-            case '<':
-                print = LessThan(row[colIndex])(*valueEntry);
-                break;
-            default:
-                break;
-            }
-            if (print) {
-                // Print the values from the selected columns for this row
-                for (const auto& columnName : printColumns) {
-                    auto colIndex = find(table.columnNames.begin(), table.columnNames.end(), columnName);
-                    if (!o.isQuiet) {
-                        cout << row[static_cast<size_t>(distance(table.columnNames.begin(), colIndex))] << " ";
-                    }
-                    numMatches++;
-                }
-                if (!o.isQuiet) cout << endl;
-            }
-        }
-        delete valueEntry;
         // Print summary
-        cout << "Printed " << numMatches/numCols << " matching rows from " << tableName << endl;
+        cout << "Printed " << numMatches << " matching rows from " << tableName << endl;
 
     }
 
@@ -673,39 +662,159 @@ public:
         case 'h':
             table.index.indexType = IndexType::HASH;
             for (size_t i = 0; i < table.data.size(); i++) {
-                table.index.hashIndex[&(table.data[i][table.colNameIndex[table.index.columnName]])].push_back(i);
+                table.index.hashIndex[(table.data[i][table.colNameIndex[table.index.columnName]])].push_back(i);
             }
-            
             break;
         case 'b':
             table.index.indexType = IndexType::BST;
             for (size_t i = 0; i < table.data.size(); i++) {
-                table.index.bstIndex[&(table.data[i][table.colNameIndex[table.index.columnName]])].push_back(i);
+                table.index.bstIndex[(table.data[i][table.colNameIndex[table.index.columnName]])].push_back(i);
             }
             break;
         default:
             break;
-            
+        
         }
         cout << "Created " << indexType << " index for table " << tableName << " on column " << colName << ", with " << max(table.index.hashIndex.size(), table.index.bstIndex.size()) << " distinct keys" << endl;
     }
-    
-    // string boolToString(const TableEntry val) {
-    //     if (val == true) return "true";
-    //     else return "false";
-    // }
-    bool stringToBool(string val) {
-        if (val == "true") return 1;
-        else return 0;
-    }
-    // bool isTableError(string command, unordered_map<string, Table>::iterator TableIt& tableName) {
-    //     if (tableIt == tables.end()) {
-    //         cout << "Error during " << command << ": " << tableName  << " does not name a table in the database\n";
-    //         return true;
-    //     }
-    //     return false;        
-    // }
 
+    bool stringToBool(string val) {
+        return val == "true";
+    }
+
+    int deleteHelper(TableEntry& valueEntry, Table& table, size_t columnIndex, const char& op) {
+        // Delete rows based on conditions
+        int size = static_cast<int>(table.data.size());
+        for (size_t i = 0; i < table.data.size(); i++) {
+            bool deleteRow = false;
+            vector<TableEntry> row = table.data[i];
+            switch (op)
+            {
+            case '=':
+                deleteRow = EqualTo(row[columnIndex])(valueEntry);
+                break;
+            case '<':
+                deleteRow = GreaterThan(row[columnIndex])(valueEntry);
+                break;
+            case '>':
+                deleteRow = LessThan(row[columnIndex])(valueEntry);
+                break;
+            default:
+                break;
+            }
+            // deleteRow = operatorCheck(row, columnIndex, valueEntry, op);
+            if (deleteRow) {
+                if (op == '=') {
+                    predEqual pred(valueEntry, columnIndex);
+                    auto remove_begin = remove_if(table.data.begin(), table.data.end(), pred);
+                    table.data.erase(remove_begin, table.data.end());
+                }
+                else if (op == '>') {
+                    predGreater pred(valueEntry, columnIndex);
+                    auto remove_begin = remove_if(table.data.begin(), table.data.end(), pred);
+                    table.data.erase(remove_begin, table.data.end());
+                }
+                else if (op == '<') {
+                    predLess pred(valueEntry, columnIndex);
+                    auto remove_begin = remove_if(table.data.begin(), table.data.end(), pred);
+                    table.data.erase(remove_begin, table.data.end());
+                }
+            }
+
+        }
+        // Print summary
+        // removeif
+        return (size - static_cast<int>(table.data.size()));
+    }
+
+    int printFromHelper(const string& filterColumn, const Table& table, vector<string>& printColumns, TableEntry& valueEntry, char& opp, size_t& colIndex) {
+        // BST
+        int numMatches = 0;
+        // if (table.index.indexType == IndexType::BST) cout << "\n\nBST\n\n"; // testing
+        if (table.index.indexType == IndexType::BST && table.index.columnName == filterColumn) {
+
+            if (opp == '=') {
+                auto bstItChecker = table.index.bstIndex.find(valueEntry);
+                if (bstItChecker != table.index.bstIndex.end()) {
+                    for (size_t i = 0; i < (table.index.bstIndex).at(valueEntry).size(); i++) {
+                        for (const auto& columnName : printColumns) {
+                            size_t colIdx = table.colNameIndex.at(columnName);
+                            if (!o.isQuiet) {
+                                cout << table.data[table.index.bstIndex.at(valueEntry)[i]][colIdx] << " ";
+                            }
+                        }
+                        ++numMatches;
+                        cout << '\n';
+                    }
+                }
+            }
+            else if (opp == '<') {
+                for (auto bstIt = table.index.bstIndex.begin(); bstIt != table.index.bstIndex.lower_bound(valueEntry); bstIt++) {
+                    for (size_t i = 0; i < (*bstIt).second.size(); i++) {
+                        for (const auto& columnName : printColumns) {
+                            size_t colIdx = table.colNameIndex.at(columnName);
+                            if (!o.isQuiet) {
+                                cout << table.data[(*bstIt).second[i]][colIdx] << " ";
+                            }
+                        }
+                        ++numMatches;
+                        cout << '\n';
+                    }
+                }
+            }
+            else if (opp == '>') {
+                for (auto bstIt = table.index.bstIndex.upper_bound(valueEntry); bstIt != table.index.bstIndex.end(); bstIt++) {
+                    for (size_t i = 0; i < (*bstIt).second.size(); i++) {
+                        for (const auto& columnName : printColumns) {
+                                size_t colIdx = table.colNameIndex.at(columnName);
+                                if (!o.isQuiet) {
+                                    cout << table.data[(*bstIt).second[i]][colIdx] << " ";
+                                }
+                        }
+                        ++numMatches;
+                        cout << '\n';
+                    }
+                }
+            }
+
+        }
+        else { // if IndexType is HASH or NONE, prints in insertion order
+            // Print the values from the selected columns for each row
+            // vector<TableEntry, row, size_t& colIndex, TableEntry* valueEntry, const char& opp
+            for (const auto& row : table.data) {
+                bool print = false;
+                // const TableEntry& entry = row[colIndex];
+                switch (opp)
+                {
+                case '=':
+                    print = EqualTo(row[colIndex])(valueEntry);
+                    break;
+                case '<':
+                    print = GreaterThan(row[colIndex])(valueEntry);
+                    break;
+                case '>':
+                    print = LessThan(row[colIndex])(valueEntry);
+                    break;
+                default:
+                    break;
+                }
+                // print = operatorCheck(row, colIndex, valueEntry, opp);
+                if (print) {
+                    // cout << "COMPARED: " << row[colIndex] << " AND " << *valueEntry << endl;
+                    // Print the values from the selected columns for this row
+                    for (const auto& columnName : printColumns) {
+                        auto colIndex = find(table.columnNames.begin(), table.columnNames.end(), columnName);
+                        if (!o.isQuiet) {
+                            cout << row[static_cast<size_t>(distance(table.columnNames.begin(), colIndex))] << " ";
+                        }
+                        numMatches++;
+                    }
+                    if (!o.isQuiet) cout << endl;
+                }
+            }
+        }
+        return numMatches;
+    }
     Database(Options& opt) :
     o(opt) {}
 
